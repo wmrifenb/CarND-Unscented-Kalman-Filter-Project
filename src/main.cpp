@@ -124,6 +124,8 @@ int main()
     	  estimate(1) = p_y;
     	  estimate(2) = v1;
     	  estimate(3) = v2;
+    	  cout << "estimate=" << endl;
+    	  cout << estimate << endl;
     	  
     	  estimations.push_back(estimate);
 
