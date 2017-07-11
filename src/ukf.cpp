@@ -15,7 +15,7 @@ UKF::UKF() {
   use_laser_ = true;
 
   // if this is false, radar measurements will be ignored (except during init)
-  use_radar_ = false;
+  use_radar_ = true;
 
   // initial state vector
   x_ = VectorXd(5);
@@ -58,6 +58,9 @@ UKF::UKF() {
   time_us_ = 0;
   is_initialized_ = false;
 
+  //create matrix with predicted sigma points as columns
+  Xsig_pred_ = MatrixXd(n_x_, 2 * n_aug_ + 1);
+
   weights_ = VectorXd(2 * n_aug_ + 1);
   double weight_0 = lambda_ / (lambda_ + n_aug_);
   weights_(0) = weight_0;
@@ -86,10 +89,16 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   if (!is_initialized_) {
     // first measurement
     cout << "UKF: " << endl;
-    x_ = VectorXd(5);
     x_ << 1, 1, 1, 1, 1;
 
-    if ((meas_package.sensor_type_ == MeasurementPackage::RADAR) & use_radar_) {
+    P_ << 0.15,    0, 0, 0, 0,
+             0, 0.15, 0, 0, 0,
+             0,    0, 1, 0, 0,
+             0,    0, 0, 1, 0,
+             0,    0, 0, 0, 1;
+
+
+    if ((meas_package.sensor_type_ == MeasurementPackage::RADAR) && use_radar_) {
       /**
        Convert radar from polar to cartesian coordinates and initialize state.
        */
@@ -99,7 +108,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       rho_dot = meas_package.raw_measurements_(2);
       x_ << rho * cos(theta), rho * sin(theta), 0.0, 0.0, 0.0;
 
-    } else if ((meas_package.sensor_type_ == MeasurementPackage::LASER) & use_laser_) {
+    } else if ((meas_package.sensor_type_ == MeasurementPackage::LASER) && use_laser_) {
       /**
        Initialize state.
        */
@@ -122,10 +131,10 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
 
   Prediction(delta_t);
 
-  if ((meas_package.sensor_type_ == MeasurementPackage::RADAR) & use_radar_) {
+  if ((meas_package.sensor_type_ == MeasurementPackage::RADAR) && use_radar_) {
     UpdateRadar(meas_package);
     return;
-  } else if ((meas_package.sensor_type_ == MeasurementPackage::LASER) & use_laser_) {
+  } else if ((meas_package.sensor_type_ == MeasurementPackage::LASER) && use_laser_) {
     UpdateLidar(meas_package);
     return;
   } else {
@@ -169,9 +178,6 @@ void UKF::Prediction(double delta_t) {
 
   //create square root matrix
   MatrixXd L = P_aug.llt().matrixL();
-
-  //create matrix with predicted sigma points as columns
-  Xsig_pred_ = MatrixXd(n_x_, 2 * n_aug_ + 1);
 
   //create augmented sigma points
   Xsig_aug.col(0) = x_aug;
@@ -244,9 +250,9 @@ void UKF::Prediction(double delta_t) {
     // state difference
     VectorXd x_diff = Xsig_pred_.col(i) - x;
     //angle normalization
-    if (x_diff(3) > M_PI)
+    while (x_diff(3) > M_PI)
       x_diff(3) -= 2. * M_PI;
-    if (x_diff(3) < -M_PI)
+    while (x_diff(3) < -M_PI)
       x_diff(3) += 2. * M_PI;
 
     P = P + weights_(i) * x_diff * x_diff.transpose();
@@ -305,12 +311,6 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
     //residual
     VectorXd z_diff = Zsig.col(i) - z_pred;
 
-    //angle normalization
-    if (z_diff(1) > M_PI)
-      z_diff(1) -= 2. * M_PI;
-    if (z_diff(1) < -M_PI)
-      z_diff(1) += 2. * M_PI;
-
     S = S + weights_(i) * z_diff * z_diff.transpose();
   }
 
@@ -333,10 +333,10 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
     // state difference
     VectorXd x_diff = Xsig_pred_.col(i) - x_;
     //angle normalization
-    if (x_diff(3) > M_PI)
-      x_diff(3) -= 2. * M_PI;
-    if (x_diff(3) < -M_PI)
-      x_diff(3) += 2. * M_PI;
+    //if (x_diff(3) > M_PI)
+     // x_diff(3) -= 2. * M_PI;
+    //if (x_diff(3) < -M_PI)
+     // x_diff(3) += 2. * M_PI;
 
     Tc = Tc + weights_(i) * x_diff * z_diff.transpose();
   }
@@ -411,9 +411,9 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
     VectorXd z_diff = Zsig.col(i) - z_pred;
 
     //angle normalization
-    if (z_diff(1) > M_PI)
+    while (z_diff(1) > M_PI)
       z_diff(1) -= 2. * M_PI;
-    if (z_diff(1) < -M_PI)
+    while (z_diff(1) < -M_PI)
       z_diff(1) += 2. * M_PI;
 
     S = S + weights_(i) * z_diff * z_diff.transpose();
@@ -436,17 +436,17 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
     //residual
     VectorXd z_diff = Zsig.col(i) - z_pred;
     //angle normalization
-    if (z_diff(1) > M_PI)
+    while (z_diff(1) > M_PI)
       z_diff(1) -= 2. * M_PI;
-    if (z_diff(1) < -M_PI)
+    while (z_diff(1) < -M_PI)
       z_diff(1) += 2. * M_PI;
 
     // state difference
     VectorXd x_diff = Xsig_pred_.col(i) - x_;
     //angle normalization
-    if (x_diff(3) > M_PI)
+    while (x_diff(3) > M_PI)
       x_diff(3) -= 2. * M_PI;
-    if (x_diff(3) < -M_PI)
+    while (x_diff(3) < -M_PI)
       x_diff(3) += 2. * M_PI;
 
     Tc = Tc + weights_(i) * x_diff * z_diff.transpose();
@@ -459,9 +459,9 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   VectorXd z_diff = z - z_pred;
 
   //angle normalization
-  if (z_diff(1) > M_PI)
+  while (z_diff(1) > M_PI)
     z_diff(1) -= 2. * M_PI;
-  if (z_diff(1) < -M_PI)
+  while (z_diff(1) < -M_PI)
     z_diff(1) += 2. * M_PI;
 
   //update state mean and covariance matrix
