@@ -6,15 +6,16 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include "tools.h"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
 class UKF {
 public:
-
   ///* initially set to false, set to true in first call of ProcessMeasurement
   bool is_initialized_;
+
 
   ///* if this is false, laser measurements will be ignored (except for init)
   bool use_laser_;
@@ -53,7 +54,7 @@ public:
   double std_radphi_;
 
   ///* Radar measurement noise standard deviation radius change in m/s
-  double std_radrd_ ;
+  double std_radrd_;
 
   ///* Weights of sigma points
   VectorXd weights_;
@@ -65,7 +66,13 @@ public:
   int n_aug_;
 
   ///* Sigma point spreading parameter
-  int lambda_;
+  double lambda_;
+
+  double NIS_radar_, NIS_laser_;
+
+  MatrixXd H_, R_laser_, R_radar_;
+
+
 
 
   /**
@@ -91,6 +98,7 @@ public:
    */
   void Prediction(double delta_t);
 
+
   /**
    * Updates the state and the state covariance matrix using a laser measurement
    * @param meas_package The measurement at k+1
@@ -102,6 +110,7 @@ public:
    * @param meas_package The measurement at k+1
    */
   void UpdateRadar(MeasurementPackage meas_package);
+
 };
 
 #endif /* UKF_H */
